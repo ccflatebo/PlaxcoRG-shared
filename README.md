@@ -1,4 +1,4 @@
-# PlaxcoRG
+# PlaxcoRG-shared
 ## titration-curve.py 
 Python script that calculates the titration concentration values, stock concentrations and total volumes needed for additions.
 Newest update allows the user to change the smallest and largest added volumes.
