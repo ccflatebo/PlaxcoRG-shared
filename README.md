@@ -8,3 +8,8 @@ The clustering of points near the middle issue for the unknown Kd has been dealt
 2. CSV file with the necessary stock concentrations to make and the total volumes used for each of them for the titration*
 3. OPTIONAL PNG file that plots the concentrations used for visualization purposes
 *the volume does NOT account for the serial dilutions you will make to create each stock
+## macro_writer_gui.py:
+Python script that prints out macros for CHInstruments software. CV, CA, and CC currently work. SWV under development
+### Outputs:
+1. Text file containing the macro script for easy access for users
+2. MCR file to be opened by CHInstruments software
