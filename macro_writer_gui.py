@@ -15,7 +15,7 @@ class params:
         # file labeling stuff
         self.datadir = 'C:/Users/ccflatebo/Documents/Data/Test'
         self.macroname = 'Macro_File'
-        self.startfilename = 'E1_'
+        self.startfilename = 'E1'
         self.save_scans = True
         # technique Parameters
         self.tech = 'CV'
@@ -23,7 +23,7 @@ class params:
         self.ei = 0
         self.eh = 1.8
         self.el = 0
-        self.ef = []
+        self.ef = 0
         # potentiostat
         self.simultaneous = True
         self.onecell = True
@@ -41,10 +41,9 @@ class params:
         self.pulse_width = 0.02 # CA
         self.amp = 0.025 # SWV
         self.num_freq = 2
-        self.freq_list = [10,200] # SWV
-        self.incr_list = [0.003,0.001]
+        self.freq_list = np.array([10,200]) # SWV
+        self.incr_list = np.array([0.003,0.001])
         # run multiple times
-        self.repeat = True
         self.num_repeat = 0
         self.delay = 0
 
@@ -64,6 +63,7 @@ class params:
         file.write('#\n# ' + self.macroname + '\n#\n')
         if self.save_scans:
             file.write('\nfolder = ' + self.datadir + '\n\n')
+        file.write('tech = ' + self.tech + '\n')
         file.write('#\n# Experiment Params\n#\n\n')
         if self.simultaneous:
             file.write('simultaneous\n')
@@ -78,8 +78,9 @@ class params:
         for item in self.electrodelist:
             file.write(item + '\n')
         file.write('\n#\n# Technique Params\n#\n\n')
-        file.write('tech = ' + self.tech + '\n')
         file.write('qt = ' + str(self.quiet_time) + '\n')
+        if self.num_repeat != 0:
+            file.write('\nfor = ' + str(self.num_repeat) + '\n')
         file.write('ei = ' + str(self.ei) + '\n')
         if self.tech == 'CV':
             if self.efon:
@@ -91,6 +92,9 @@ class params:
             file.write('v = ' + str(self.scanrate) + ' # scan rate\n')
             file.write('cl = ' + str(self.sweeps) + ' # segments\n')
             file.write('si = ' + str(self.sample_interval) + ' # sample interval\n')
+            file.write('run\n')
+            if self.save_scans:
+                file.write('save = ' + self.startfilename + '\ntsave = ' + self.startfilename + '\n')
         elif self.tech == 'CA':
             file.write('eh = ' + str(self.eh) + '\n')
             file.write('el = ' + str(self.el) + '\n')
@@ -98,27 +102,32 @@ class params:
             file.write('cl = ' + str(self.sweeps) + ' # number of steps\n')
             file.write('pw = ' + str(self.pulse_width) + ' # pulse width\n')
             file.write('si = ' + str(self.sample_interval) + ' # sample interval\n')
+            file.write('\run')
+            if self.save_scans:
+                file.write('save = ' + self.startfilename + '\ntsave = ' + self.startfilename + '\n')
         elif self.tech == 'CC':
             file.write('ef = ' + str(self.ef) + '\n')
             file.write('cl = ' + str(self.sweeps) + ' # number of steps\n')
             file.write('pw = ' + str(self.pulse_width) + ' # pulse width\n')
             file.write('si = ' + str(self.sample_interval) + ' # sample interval\n')
+            file.write('run\n')
+            if self.save_scans:
+                file.write('save = ' + self.startfilename + '\ntsave = ' + self.startfilename + '\n')
         elif self.tech == 'SWV':
             file.write('ef = ' + str(self.ef) + '\n')
-            file.write('amp = ' + str(self.amp) + ' # amplitude\n')
-            if np.shape(self.freq_list)[0] == 1:
-                file.write('freq = ' + str(self.freq_list) + ' # frequency\n')
-                file.write('incre = ' + str(self.incre_list) + ' # increment\n')
+            file.write('amp = ' + str(self.amp) + ' # amplitude\n\n')
+            for idx in range(0,self.num_freq):
+                file.write('freq = ' + str(self.freq_list[idx]) + ' # frequency\n')
+                file.write('incre = ' + str(self.incr_list[idx]) + ' # increment\n')
+                file.write('run\n')
+                if self.save_scans:
+                    file.write('save = ' + self.startfilename + '_' + str(self.freq_list[idx]) + 'Hz\ntsave = ' + self.startfilename + '_' + str(self.freq_list[idx]) + 'Hz\n\n')
+                
         else:
             print('Macro Writer not able to write ' + self.tech + ' yet')
-
-        if self.repeat:
-            file.write('\nfor = ' + str(self.num_repeat) + '\n')
-        file.write('run\n')
-        if self.save_scans:
-            file.write('save = ' + self.startfilename + '\ntsave = ' + self.startfilename + '\n')
-        if self.repeat:
-            file.write('next')
+        if self.num_repeat != 0:
+            file.write('next\n')
+            file.write('delay = ' + str(self.delay) + ' # number of seconds to delay between runs')
         gene_mcr_file(file)
         file.close()
 
@@ -129,11 +138,9 @@ def gene_mcr_file(file):
     mcr_file=open(file.name[:-3] + 'mcr','w')
     mcr_file.write('Hh\x00\x00'+ file.read())
     file.seek(0, 2)
-    pass
 
 def clicked():
     expdir = filedialog.askdirectory()
-#    directory.configure(text=expdir)
     directory.delete(0,'end')
     directory.insert(END,expdir)
     
@@ -148,6 +155,9 @@ def print_macro():
     new_params.ei = ei.get()
     new_params.sample_interval = interval.get()
     new_params.total_electrodes = electrode.get()
+    new_params.num_repeat = int(ent_repeat.get())
+    if new_params.num_repeat != 0:
+        new_params.delay = ent_delay.get()
     if tech == 0:
         new_params.tech = 'CV'
         new_params.eh = eh.get()
@@ -160,6 +170,13 @@ def print_macro():
         new_params.direction = pol.get()
     elif tech == 1:
         new_params.tech = 'SWV'
+        new_params.ef = ef.get()
+        new_params.amp = ent_amp.get()
+        new_params.num_freq = int(ent_freqnum.get())
+        for x, label in enumerate(reversed(swv_freq.grid_slaves(column=1))):
+            new_params.freq_list[x] = label.get()
+        for x, label in enumerate(reversed(swv_freq.grid_slaves(column=2))):
+            new_params.incr_list[x] = label.get()
     elif tech == 2:
         new_params.tech = 'CA'
         new_params.eh = eh.get()
@@ -182,6 +199,159 @@ def close_program():
 def reset():
     set_defaults()
     
+def default_cleanNaOH():
+    ent_macro.delete(0,END)
+    ent_macro.insert(0,'Cleaning_NaOH_6elec')
+    drop_technique.select(0)
+    electrode.set(6)
+    ei.set(-1)
+    ef.set(-1)
+    eh.set(-1.8)
+    el.set(-1)
+    pol.set('n')
+    sweeps.set(250)
+    interval.set(0.001)
+    sens.set(sens_options[0])
+    ent_scan.delete(0,END)
+    ent_scan.insert(0,1)
+    ent_repeat.delete(0,END)
+    ent_repeat.insert(0,4)
+    ent_delay.delete(0,END)
+    ent_delay.insert(0,0)
+
+def default_cleanH2SO4():
+    ent_macro.delete(0,END)
+    ent_macro.insert(0,'Cleaning_H2SO4_6elec')
+    drop_technique.select(0)
+    electrode.set(6)
+    ei.set(0)
+    ef.set(0)
+    eh.set(1.8)
+    el.set(0)
+    pol.set('p')
+    sweeps.set(10)
+    interval.set(0.001)
+    sens.set(sens_options[1])
+    ent_scan.delete(0,END)
+    ent_scan.insert(0,1)
+    ent_repeat.delete(0,END)
+    ent_repeat.insert(0,10)
+    ent_delay.delete(0,END)
+    ent_delay.insert(0,0)
+    
+def default_roughen():
+    ent_macro.delete(0,END)
+    ent_macro.insert(0,'Roughen_H2SO4_6elec')
+    drop_technique.select(2)
+    electrode.set(6)
+    ei.set(0)
+    eh.set(2.2)
+    el.set(0)
+    pol.set('p')
+    sweeps.set(320)
+    interval.set(0.001)
+    sens.set(sens_options[0])
+    ent_pw.delete(0,END)
+    ent_pw.insert(0,0.02)
+    ent_repeat.delete(0,END)
+    ent_repeat.insert(0,100)
+    ent_delay.delete(0,END)
+    ent_delay.insert(0,0)
+    
+def default_check():
+    ent_macro.delete(0,END)
+    ent_macro.insert(0,'Check_H2SO4_6elec')
+    drop_technique.select(0)
+    electrode.set(6)
+    ei.set(0)
+    ef.set(0)
+    eh.set(1.8)
+    el.set(0)
+    pol.set('p')
+    sweeps.set(10)
+    interval.set(0.001)
+    sens.set(sens_options[0])
+    ent_scan.delete(0,END)
+    ent_scan.insert(0,1)
+    ent_repeat.delete(0,END)
+    ent_repeat.insert(0,0)
+    ent_delay.delete(0,END)
+    ent_delay.insert(0,0)
+    
+def default_freqmap_20():
+    default_freqmap(20)
+    
+def default_freqmap_50():
+    default_freqmap(50)
+def default_freqmap(val):
+    global swv_freq
+    ent_macro.delete(0,END)
+    ent_macro.insert(0,'FreqMap_6elec')
+    drop_technique.select(1)
+    electrode.set(6)
+    ei.set(-0.15)
+    ef.set(-0.45)
+    sens.set(sens_options[2])
+    new_params.freq_list = np.concatenate([np.array([5,8,10,15,20,25]),
+                            np.arange(30,110,10),
+                            np.arange(150,500 + val,val),
+                            np.arange(600,1100,100)])
+    new_params.num_freq = int(np.shape(new_params.freq_list)[0])
+    new_params.incr_list = np.zeros_like(new_params.freq_list,dtype=float)
+    # print(type(new_params.incr_list))
+    ent_freqnum.set(new_params.num_freq)
+    swv_freq.destroy()
+    swv_freq = ttk.Frame(swv_freq_header)
+    swv_freq.grid(row=1,column=0,columnspan = 3, sticky=NW)
+    for x in range(0,new_params.num_freq):
+        lbl_freq = ttk.Label(swv_freq,text = str(x+1)).grid(row=x,column=0)
+        ent_freq = ttk.Entry(swv_freq,width=width_textbox)
+        ent_freq.grid(row = x, column = 1)
+        ent_freq.insert(0,new_params.freq_list[x])
+        if new_params.freq_list[x] <= 25:
+            new_params.incr_list[x] = 0.003
+        elif new_params.freq_list[x] <= 90:
+            new_params.incr_list[x] = 0.002
+        else:
+            new_params.incr_list[x] = 0.001
+        ent_incr = ttk.Entry(swv_freq,width=width_textbox)
+        ent_incr.grid(row = x, column = 2)
+        ent_incr.insert(0,new_params.incr_list[x])
+
+def default_titrationcurve():
+    global swv_freq
+    ent_macro.delete(0,END)
+    ent_macro.insert(0,'Titration_6elec')
+    drop_technique.select(1)
+    electrode.set(6)
+    ei.set(-0.15)
+    ef.set(-0.45)
+    sens.set(sens_options[2])
+    new_params.freq_list = np.array([10,200])
+    new_params.num_freq = int(np.shape(new_params.freq_list)[0])
+    new_params.incr_list = np.zeros_like(new_params.freq_list,dtype=float)
+    # print(type(new_params.incr_list))
+    ent_freqnum.set(new_params.num_freq)
+    swv_freq.destroy()
+    swv_freq = ttk.Frame(swv_freq_header)
+    swv_freq.grid(row=1,column=0,columnspan = 3, sticky=NW)
+    for x in range(0,new_params.num_freq):
+        lbl_freq = ttk.Label(swv_freq,text = str(x+1)).grid(row=x,column=0)
+        ent_freq = ttk.Entry(swv_freq,width=width_textbox)
+        ent_freq.grid(row = x, column = 1)
+        ent_freq.insert(0,new_params.freq_list[x])
+        if new_params.freq_list[x] <= 25:
+            # print('less than 25')
+            new_params.incr_list[x] = 0.003
+        elif new_params.freq_list[x] <= 90:
+            new_params.incr_list[x] = 0.002
+        else:
+            new_params.incr_list[x] = 0.001
+        ent_incr = ttk.Entry(swv_freq,width=width_textbox)
+        ent_incr.grid(row = x, column = 2)
+        ent_incr.insert(0,new_params.incr_list[x])
+    pass
+
 def set_defaults():
     global default_params
     ei.set(default_params.ei)
@@ -197,6 +367,8 @@ def set_defaults():
     ent_pw.delete(0,END)
     ent_amp.delete(0,END)
     ent_repeat.delete(0,END)
+    ent_delay.delete(0,END)
+    ent_delay.insert(0, default_params.delay)
     ent_repeat.insert(0, default_params.num_repeat)
     electrode.set(default_params.total_electrodes)
     sens.set(default_params.sens)
@@ -207,14 +379,17 @@ def set_defaults():
     ent_incre.insert(0,default_params.sample_interval)
     ent_freqnum.set(default_params.num_freq)
     ent_amp.insert(0,default_params.amp)
-    for x in range(0,new_params.num_freq):
-        lbl_freq = ttk.Label(swv_freq,text = str(x+1)).grid(row=x+1,column=0)
+    for x in range(0,default_params.num_freq):
+        lbl_freq = ttk.Label(swv_freq,text = str(x+1)).grid(row=x,column=0)
         ent_freq = ttk.Entry(swv_freq,width=width_textbox)
-        ent_freq.grid(row = 1 + x, column = 1)
-        ent_freq.insert(0,new_params.freq_list[x])
+        ent_freq.grid(row = x, column = 1)
+        ent_freq.insert(0,default_params.freq_list[x])
         ent_freq = ttk.Entry(swv_freq,width=width_textbox)
-        ent_freq.grid(row = 1 + x, column = 2)
-        ent_freq.insert(0,new_params.incr_list[x])
+        ent_freq.grid(row = x, column = 2)
+        ent_freq.insert(0,default_params.incr_list[x])
+    for label in swv_freq.grid_slaves():
+        if int(label.grid_info()['row']) > default_params.num_freq-1:
+            label.grid_forget()
 
 def freq_change():
     global new_params, swv_freq
@@ -226,31 +401,22 @@ def freq_change_enter(event):
 
 def addsub_freq(swv_freq,new_params):
     new_freq_num = int(ent_freqnum.get())
+    # print(new_freq_num)
     if new_freq_num > new_params.num_freq:
         for x in range(new_params.num_freq,new_freq_num):
-            lbl_freq = ttk.Label(swv_freq,text = str(x+1)).grid(row=x+1,column=0)
+            lbl_freq = ttk.Label(swv_freq,text = str(x+1)).grid(row=x,column=0)
             ent_freq = ttk.Entry(swv_freq,width=width_textbox)
-            ent_freq.grid(row = 1 + x, column = 1)
+            ent_freq.grid(row = x, column = 1)
             # ent_freq.insert(0,new_params.freq_list[x][0])
-            new_params.freq_list.append(ent_freq.get())
+            np.append(new_params.freq_list,np.nan)
             ent_freq = ttk.Entry(swv_freq,width=width_textbox)
-            ent_freq.grid(row = 1 + x, column = 2)
+            ent_freq.grid(row = x, column = 2)
             ent_freq.insert(0,new_params.sample_interval)
-            new_params.incr_list.append(ent_freq.get())
+            np.append(new_params.incr_list,ent_freq.get())
     elif new_freq_num < new_params.num_freq:
-        for x in range(0,new_freq_num):
-            lbl_freq = ttk.Label(swv_freq,text = str(x+1)).grid(row=x+1,column=0)
-            ent_freq = ttk.Entry(swv_freq,width=width_textbox)
-            ent_freq.grid(row = 1 + x, column = 1)
-            ent_freq.insert(0,new_params.freq_list[x])
-            ent_freq = ttk.Entry(swv_freq,width=width_textbox)
-            ent_freq.grid(row = 1 + x, column = 2)
-            ent_freq.insert(0,new_params.incr_list[x])
         for label in swv_freq.grid_slaves():
-            if int(label.grid_info()['row']) > new_freq_num:
+            if int(label.grid_info()['row']) > new_freq_num-1:
                 label.grid_forget()
-        new_params.freq_list = new_params.freq_list[0:new_freq_num-1]
-        new_params.incr_list = new_params.incr_list[0:new_freq_num-1]
     new_params.num_freq = new_freq_num
 # Constants
 width_textbox = 5   
@@ -275,13 +441,25 @@ el = DoubleVar()
 pol = StringVar()
 sens = StringVar()
 electrode = IntVar()
-
 interval = DoubleVar()
 sweeps = IntVar()
 tech_options = ['Cyclic Voltammetry', 'Square Wave Voltammetry', 'Chronoamperometry', 'Chronocoulometry']
+default_options = ['Cleaning NaOH','Cleaning H2SO4','Roughening H2SO4','Check H2SO4','Frequency Map (few)','Frequency Map (many)','Titration Curve']
 pol_options = ['n', 'p']
 sens_options = ['1e-3','1e-4','1e-5','1e-6','1e-7','1e-8','1e-9']
 electrode_options = [1,2,3,4,5,6,7,8]
+#%% Optional Defaults
+menubar = Menu(root)
+menu_defaults = Menu(menubar,tearoff=0)
+menu_defaults.add_command(label = default_options[0],command = default_cleanNaOH)
+menu_defaults.add_command(label = default_options[1],command = default_cleanH2SO4)
+menu_defaults.add_command(label = default_options[2],command = default_roughen)
+menu_defaults.add_command(label = default_options[3],command = default_check)
+menu_defaults.add_command(label = default_options[4],command = default_freqmap_50)
+menu_defaults.add_command(label = default_options[5],command = default_freqmap_20)
+menu_defaults.add_command(label = default_options[6],command = default_titrationcurve)
+
+menubar.add_cascade(label = 'Default Macros',menu=menu_defaults)
 
 #%% File Shit
 frame_file = ttk.Frame(root)
@@ -319,6 +497,9 @@ drop_elec.grid(row = 0,column = 1)
 lbl_repeat = ttk.Label(master = frame_root,text = '# Repeat Cycles: ').grid(row=0,column=2,sticky=E)
 ent_repeat = ttk.Entry(master = frame_root, width = width_textbox)
 ent_repeat.grid(row = 0,column = 3)
+lbl_delay = ttk.Label(master = frame_root,text = 'Delay: ').grid(row=0,column=4,sticky=E)
+ent_delay = ttk.Entry(master = frame_root, width = width_textbox)
+ent_delay.grid(row = 0,column = 5)
 lbl_sens = ttk.Label(master = frame_root,text = 'Sensitivity: ').grid(row=1,column=2,sticky=E)
 drop_sens = ttk.OptionMenu(frame_root, sens, sens_options[0],*sens_options)
 drop_sens.grid(row = 1,column = 3)
@@ -384,13 +565,14 @@ ent_amp.grid(row = 0,column = 3, sticky=W)
 lbl_incre = ttk.Label(master = frame_root,text = 'Default Increment: ').grid(row=2,column=2,sticky=E)
 ent_incre = ttk.Entry(master = frame_root,width = width_textbox)
 ent_incre.grid(row = 2,column = 3, sticky=W)
-swv_freq = ttk.Frame(swv_tab)
-swv_freq.grid(row=0,column=1,sticky=NE)
-frame_root = swv_freq
+swv_freq_header = ttk.Frame(swv_tab)
+swv_freq_header.grid(row=0,column=1,sticky=NE,padx = 10)
+frame_root = swv_freq_header
 lbl_col1 = ttk.Label(frame_root,text = '#').grid(row = 0, column = 0)
 lbl_col2 = ttk.Label(frame_root,text = 'Frequency').grid(row = 0, column = 1)
 lbl_col3 = ttk.Label(frame_root,text = 'Increment').grid(row = 0, column = 2)
-
+swv_freq = ttk.Frame(swv_freq_header)
+swv_freq.grid(row=1,column=0,columnspan = 3, sticky=NW)
 
 
 frame_root = ca_tab
@@ -435,4 +617,5 @@ b_reset = ttk.Button(master=frame_buttons,text = 'Reset Technique Parameters',co
 b_calculate = ttk.Button(master=frame_buttons,text = 'Print Macro',command = print_macro).grid(row = 0,column=1)
 b_close = ttk.Button(master=frame_buttons,text = 'Quit',command = close_program).grid(row = 0,column=2)
 set_defaults()
+root.config(menu=menubar)
 root.mainloop()
