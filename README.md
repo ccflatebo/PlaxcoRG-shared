@@ -9,7 +9,6 @@ The clustering of points near the middle issue for the unknown Kd has been dealt
 3. OPTIONAL PNG file that plots the concentrations used for visualization purposes
 *the volume does NOT account for the serial dilutions you will make to create each stock
 ## macro_writer_gui.py:
-Python script that prints out macros for CHInstruments software. CV, CA, and CC currently work. SWV under development
-### Outputs:
+Python script that prints out macros for CHInstruments software. CV, SWV, CA, and CC are functioning. Unchecking saved scans glitch will be fixed in next update.
 1. Text file containing the macro script for easy access for users
 2. MCR file to be opened by CHInstruments software
