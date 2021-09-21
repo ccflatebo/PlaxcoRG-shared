@@ -13,9 +13,9 @@ import numpy as np
 class params:
     def __init__(self):
         # file labeling stuff
-        self.datadir = 'C:/Users/ccflatebo/Documents/Data/Test'
+        self.datadir = '../Data/Test'
         self.macroname = 'Macro_File'
-        self.startfilename = 'E1'
+        self.startfilename = 'CF-01-001'
         self.save_scans = True
         # technique Parameters
         self.tech = 'CV'
@@ -126,8 +126,8 @@ class params:
         else:
             print('Macro Writer not able to write ' + self.tech + ' yet')
         if self.num_repeat != 0:
-            file.write('next\n')
             file.write('delay = ' + str(self.delay) + ' # number of seconds to delay between runs')
+            file.write('next\n')
         gene_mcr_file(file)
         file.close()
 
@@ -176,6 +176,8 @@ def print_macro():
         new_params.ef = ef.get()
         new_params.amp = ent_amp.get()
         new_params.num_freq = int(ent_freqnum.get())
+        new_params.freq_list = np.zeros(new_params.num_freq,dtype=int)
+        new_params.incr_list = np.zeros_like(new_params.freq_list,dtype=float)
         for x, label in enumerate(reversed(swv_freq.grid_slaves(column=1))):
             new_params.freq_list[x] = label.get()
         for x, label in enumerate(reversed(swv_freq.grid_slaves(column=2))):
@@ -283,7 +285,7 @@ def default_check():
     
 def default_freqmap_20():
     default_freqmap(20)
-    
+
 def default_freqmap_50():
     default_freqmap(50)
 def default_freqmap(val):
@@ -292,6 +294,8 @@ def default_freqmap(val):
     ent_macro.insert(0,'FreqMap_6elec')
     drop_technique.select(1)
     electrode.set(6)
+    ent_repeat.delete(0,END)
+    ent_repeat.insert(0,50)
     ei.set(-0.15)
     ef.set(-0.45)
     sens.set(sens_options[2])
@@ -335,6 +339,10 @@ def default_titrationcurve():
     new_params.incr_list = np.zeros_like(new_params.freq_list,dtype=float)
     # print(type(new_params.incr_list))
     ent_freqnum.set(new_params.num_freq)
+    ent_repeat.delete(0,END)
+    ent_repeat.insert(0,50)
+    ent_delay.delete(0,END)
+    ent_delay.insert(0,200)
     swv_freq.destroy()
     swv_freq = ttk.Frame(swv_freq_header)
     swv_freq.grid(row=1,column=0,columnspan = 3, sticky=NW)
