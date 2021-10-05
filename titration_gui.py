@@ -68,7 +68,7 @@ class params:
         if self.hormone:
             self.conc_min = self.conc_min_input * self.base ** (self.unit_min*-3)*self.conv_IU
             self.conc_max = self.conc_max_input * self.base ** (self.unit_max*-3)*self.conv_IU
-            self.stock_conc = self.stock_conc_input * self.base ** (self.unit_stock*-3)
+            self.stock_conc = self.stock_conc_input * self.base ** (self.unit_stock*-3)*self.conv_IU
         else:
             self.conc_min = self.conc_min_input * self.base ** (self.unit_min*-3)
             self.conc_max = self.conc_max_input * self.base ** (self.unit_max*-3)
@@ -208,14 +208,24 @@ class params:
             self.df['[IU]'] = self.df['Final [M]'] / (self.conv_IU)
             self.df['Stock [IU]'] = self.df['Stock [M]'] / (self.conv_IU)
         unique_stocks = np.unique(self.df['Stock [M]'])
+        if self.hormone:
+            unique_IU_stocks = np.unique(self.df['Stock [IU]'])
         total_vol_perstock = np.zeros_like(unique_stocks)
         for item in self.df.index.values.tolist():
             idx = np.where(unique_stocks==self.df['Stock [M]'][item])
             total_vol_perstock[idx] = total_vol_perstock[idx] + self.df['Added Volume (uL)'][item]
+            
         output_txtfile = open(self.datadir + '/' + self.startfilename + '_stocks.csv','w')
-        output_txtfile.write('Stock Concentrations (M), Total Vol (uL)\n')
-        for idx, val in enumerate(unique_stocks):
-            output_txtfile.write(str(val) + ', ' + str(total_vol_perstock[idx]) + '\n')
+        if self.hormone:
+            output_txtfile.write('Stock Concentrations (M), Stock Concentrations (IU), Total Vol (uL)\n')
+            for idx, val in enumerate(unique_stocks):
+                output_txtfile.write(str(val) + ', ' + str(unique_IU_stocks[idx]) + ', ' + str(total_vol_perstock[idx]) + '\n')
+        else:
+            output_txtfile.write('Stock Concentrations (M), Total Vol (uL)\n')
+            for idx, val in enumerate(unique_stocks):
+                output_txtfile.write(str(val) + ', ' + str(total_vol_perstock[idx]) + '\n')
+        
+        
         output_txtfile.close()
         df1 = pd.DataFrame(np.zeros((1,len(self.df.columns))),columns = self.df.columns)
         self.df = df1.append(self.df,ignore_index = True)
@@ -401,6 +411,8 @@ def get_concsettings():
     new_params.k_d_input = float(ent_kd.get())
     new_params.remove = remove_options.index(remove.get())
     new_params.start_vol = float(ent_start_vol.get())*10**-3
+    new_params.smallest_vol_added = float(ent_small_vol.get())
+    new_params.largest_vol_added = float(ent_large_vol.get())
     if new_params.hormone:
         dict_ind = 1
         new_params.conv_unit = unit_options[0].index(units_conv.get())
