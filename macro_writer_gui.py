@@ -9,11 +9,13 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
 import numpy as np
+import datetime
 
 class params:
     def __init__(self):
         # file labeling stuff
-        self.datadir = '../Data/Test'
+        self.datadir = '../Data/'
+        self.savedir = 'F:/Plaxco_Labs/CFlatebo/210920/Raw/'
         self.macroname = 'Macro_File'
         self.startfilename = 'CF-01-001'
         self.save_scans = True
@@ -64,6 +66,52 @@ class params:
         if self.save_scans:
             file.write('\nfolder = ' + self.datadir + '\n\n')
         file.write('tech = ' + self.tech + '\n')
+        # Figure out how long the macro takes to run #
+        if self.tech == 'SWV':
+            freq_time = 0
+            for idx in range(0,self.num_freq):
+                freq_time += np.abs(self.ef - self.ei)/(self.freq_list[idx]*self.incr_list[idx])
+            total_time_per_run = float(self.quiet_time) + freq_time
+            if self.num_repeat != 0:
+                total_time = (self.num_repeat + 1)*total_time_per_run
+                if self.delay != 0:
+                    total_time_withdelay = total_time + float(self.delay)*(self.num_repeat+1)
+                    file.write('#\n# Macro run time with delays: ' + str(datetime.timedelta(seconds=total_time_withdelay)))
+            else:
+                total_time = total_time_per_run
+        elif self.tech == 'CV':
+            if self.direction == 'n':
+                sweeps_i = np.abs(self.ei - np.amin([self.eh,self.el]))/float(self.scanrate)
+                if self.sweeps % 2 > 0: # if odd
+                    sweeps_f = np.abs(self.ef - self.eh)/float(self.scanrate)
+                else:
+                    sweeps_f = np.abs(self.ef - self.el)/float(self.scanrate)
+            else:
+                sweeps_i = np.abs(self.ei - np.amax([self.eh,self.el]))/float(self.scanrate)
+                if self.sweeps % 2 > 0: # if odd
+                    sweeps_f = np.abs(self.ef - self.el)/float(self.scanrate)
+                else:
+                    sweeps_f = np.abs(self.ef - self.eh)/float(self.scanrate)
+            
+            sweeps_n = (self.sweeps-2)*np.abs(self.eh - self.el)/float(self.scanrate)
+            total_time_per_run = float(self.quiet_time) + sweeps_n + sweeps_i + sweeps_f
+            if self.num_repeat != 0:
+                total_time = (self.num_repeat + 1)*total_time_per_run
+                if self.delay != 0:
+                    total_time_withdelay = total_time + float(self.delay)*(self.num_repeat+1)
+                    file.write('#\n# Macro run time with delays: ' + str(datetime.timedelta(seconds=total_time_withdelay)))
+            else:
+                total_time = total_time_per_run
+        elif self.tech == 'CA' or self.tech == 'CC':
+            total_time_per_run = float(self.quiet_time) + float(self.pulse_width)*float(self.sweeps)
+            if self.num_repeat != 0:
+                total_time = (self.num_repeat + 1)*total_time_per_run
+                if self.delay != 0:
+                    total_time_withdelay = total_time + float(self.delay)*(self.num_repeat+1)
+                    file.write('#\n# Macro run time with delays: ' + str(datetime.timedelta(seconds=total_time_withdelay)))
+            else:
+                total_time = total_time_per_run
+        file.write('\n# Macro run time: ' + str(datetime.timedelta(seconds=total_time)) + '\n')
         file.write('#\n# Experiment Params\n#\n\n')
         if self.simultaneous:
             file.write('simultaneous\n')
@@ -102,7 +150,7 @@ class params:
             file.write('cl = ' + str(self.sweeps) + ' # number of steps\n')
             file.write('pw = ' + str(self.pulse_width) + ' # pulse width\n')
             file.write('si = ' + str(self.sample_interval) + ' # sample interval\n')
-            file.write('\run')
+            file.write('run\n')
             if self.save_scans:
                 file.write('save = ' + self.startfilename + '\ntsave = ' + self.startfilename + '\n')
         elif self.tech == 'CC':
@@ -126,7 +174,8 @@ class params:
         else:
             print('Macro Writer not able to write ' + self.tech + ' yet')
         if self.num_repeat != 0:
-            file.write('delay = ' + str(self.delay) + ' # number of seconds to delay between runs')
+            if int(self.delay) != 0:
+                file.write('delay = ' + str(self.delay) + ' # number of seconds to delay between runs\n')
             file.write('next\n')
         gene_mcr_file(file)
         file.close()
@@ -137,6 +186,7 @@ def gene_mcr_file(file):
     file.seek(0, 0)
     mcr_file=open(file.name[:-3] + 'mcr','w')
     mcr_file.write('Hh\x00\x00'+ file.read())
+    mcr_file.close()
     file.seek(0, 2)
 
 def clicked():
@@ -159,8 +209,7 @@ def print_macro():
     new_params.sample_interval = interval.get()
     new_params.total_electrodes = electrode.get()
     new_params.num_repeat = int(ent_repeat.get())
-    if new_params.num_repeat != 0:
-        new_params.delay = ent_delay.get()
+    new_params.delay = int(ent_delay.get())
     if tech == 0:
         new_params.tech = 'CV'
         new_params.eh = eh.get()
@@ -191,7 +240,7 @@ def print_macro():
     elif tech == 3:
         new_params.tech = 'CC'
         new_params.ef = ef.get()
-        new_params.pulse_width = ent_pw.get()
+        new_params.pulse_width = ent_pw_cc.get()
         new_params.sweeps = sweeps.get()
     if not os.path.isdir(new_params.datadir):
         os.makedirs(new_params.datadir)
@@ -223,6 +272,7 @@ def default_cleanNaOH():
     ent_repeat.insert(0,4)
     ent_delay.delete(0,END)
     ent_delay.insert(0,0)
+    check_save.deselect()
 
 def default_cleanH2SO4():
     ent_macro.delete(0,END)
@@ -243,6 +293,7 @@ def default_cleanH2SO4():
     ent_repeat.insert(0,10)
     ent_delay.delete(0,END)
     ent_delay.insert(0,0)
+    check_save.deselect()
     
 def default_roughen():
     ent_macro.delete(0,END)
@@ -262,6 +313,7 @@ def default_roughen():
     ent_repeat.insert(0,100)
     ent_delay.delete(0,END)
     ent_delay.insert(0,0)
+    check_save.deselect()
     
 def default_check():
     ent_macro.delete(0,END)
@@ -282,6 +334,7 @@ def default_check():
     ent_repeat.insert(0,0)
     ent_delay.delete(0,END)
     ent_delay.insert(0,0)
+    check_save.select()
     
 def default_freqmap_20():
     default_freqmap(20)
@@ -295,9 +348,11 @@ def default_freqmap(val):
     drop_technique.select(1)
     electrode.set(6)
     ent_repeat.delete(0,END)
-    ent_repeat.insert(0,50)
-    ei.set(-0.15)
-    ef.set(-0.45)
+    ent_repeat.insert(0,51)
+    ei.set(-0.18)
+    ef.set(-0.48)
+    ent_delay.delete(0,END)
+    ent_delay.insert(0,200)
     sens.set(sens_options[2])
     new_params.freq_list = np.concatenate([np.array([5,8,10,15,20,25]),
                             np.arange(30,110,10),
@@ -331,8 +386,8 @@ def default_titrationcurve():
     ent_macro.insert(0,'Titration_6elec')
     drop_technique.select(1)
     electrode.set(6)
-    ei.set(-0.15)
-    ef.set(-0.45)
+    ei.set(-0.18)
+    ef.set(-0.48)
     sens.set(sens_options[2])
     new_params.freq_list = np.array([10,200])
     new_params.num_freq = int(np.shape(new_params.freq_list)[0])
@@ -340,7 +395,7 @@ def default_titrationcurve():
     # print(type(new_params.incr_list))
     ent_freqnum.set(new_params.num_freq)
     ent_repeat.delete(0,END)
-    ent_repeat.insert(0,50)
+    ent_repeat.insert(0,51)
     ent_delay.delete(0,END)
     ent_delay.insert(0,200)
     swv_freq.destroy()
@@ -361,7 +416,7 @@ def default_titrationcurve():
         ent_incr = ttk.Entry(swv_freq,width=width_textbox)
         ent_incr.grid(row = x, column = 2)
         ent_incr.insert(0,new_params.incr_list[x])
-    pass
+    check_save.select()
 
 def set_defaults():
     global default_params
@@ -376,6 +431,7 @@ def set_defaults():
     ent_freqnum.delete(0)
     ent_incre.delete(0,END)
     ent_pw.delete(0,END)
+    ent_pw_cc.delete(0,END)
     ent_amp.delete(0,END)
     ent_repeat.delete(0,END)
     ent_delay.delete(0,END)
@@ -385,6 +441,7 @@ def set_defaults():
     sens.set(default_params.sens)
     pol.set(default_params.direction)
     ent_pw.insert(0, default_params.pulse_width)
+    ent_pw_cc.insert(0, default_params.pulse_width)
     ent_scan.insert(0,default_params.scanrate)
     ent_qt.insert(0,default_params.quiet_time)
     ent_incre.insert(0,default_params.sample_interval)
@@ -401,6 +458,7 @@ def set_defaults():
     for label in swv_freq.grid_slaves():
         if int(label.grid_info()['row']) > default_params.num_freq-1:
             label.grid_forget()
+    check_save.select()
 
 def freq_change():
     global new_params, swv_freq
@@ -622,8 +680,8 @@ ent_sweeps = ttk.Entry(master = frame_root,textvariable = sweeps, width = width_
 lbl_interval = ttk.Label(master = frame_root,text = 'Sample Interval: ').grid(row=2,column=2,sticky=E)
 ent_interval = ttk.Entry(master = frame_root,textvariable = interval, width = width_textbox).grid(row = 2,column = 3, sticky=W)
 lbl_pw = ttk.Label(master = frame_root,text = 'Pulse Width: ').grid(row=0,column=2,sticky=E)
-ent_pw = ttk.Entry(master = frame_root,width = width_textbox)
-ent_pw.grid(row = 0,column = 3, sticky=W)
+ent_pw_cc = ttk.Entry(master = frame_root,width = width_textbox)
+ent_pw_cc.grid(row = 0,column = 3, sticky=W)
 #%% Buttons
 frame_buttons = ttk.Frame(master = root)
 frame_buttons.grid(row = 3, column = 0, columnspan = 2)
