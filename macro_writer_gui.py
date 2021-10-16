@@ -92,7 +92,6 @@ class params:
                     sweeps_f = np.abs(self.ef - self.el)/float(self.scanrate)
                 else:
                     sweeps_f = np.abs(self.ef - self.eh)/float(self.scanrate)
-            
             sweeps_n = (self.sweeps-2)*np.abs(self.eh - self.el)/float(self.scanrate)
             total_time_per_run = float(self.quiet_time) + sweeps_n + sweeps_i + sweeps_f
             if self.num_repeat != 0:
@@ -213,6 +212,7 @@ def print_macro():
     if tech == 0:
         new_params.tech = 'CV'
         new_params.eh = eh.get()
+        new_params.el = el.get()
         try:
             new_params.ef = ef.get()
         except TclError:
