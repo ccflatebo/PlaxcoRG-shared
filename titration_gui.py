@@ -43,7 +43,7 @@ class params:
         self.frac_low = 1 # this is the ratio of measurements in the lower range
         self.frac_mid = 1 # this is the ratio of measurements in the mid range
         self.frac_high = 1 # this is the ratio of measurements in the upper range
-        
+        self.linear = False
         """ Optional Kd Parameters """
         ## Do you know your Kd? if not please don't touch me ##
         self.k_d_known = False
@@ -110,10 +110,16 @@ class params:
             else:
                 low_half = self.num_measurements//3
                 upper_half = self.num_measurements//3+1
-            conc_all_temp = np.geomspace(self.conc_min,self.conc_max,self.num_measurements)
-            conc_low = np.geomspace(self.conc_min,conc_all_temp[low_half],self.num_measurements_low,endpoint=False)
-            conc_high = np.geomspace(conc_all_temp[-upper_half],self.conc_max,self.num_measurements_high,endpoint=True)
-            conc_mid = np.geomspace(conc_all_temp[low_half],np.amin(conc_high),self.num_measurements_mid,endpoint=False)
+            if self.linear:
+                conc_all_temp = np.linspace(self.conc_min,self.conc_max,self.num_measurements)
+                conc_low = np.linspace(self.conc_min,conc_all_temp[low_half],self.num_measurements_low,endpoint=False)
+                conc_high = np.linspace(conc_all_temp[-upper_half],self.conc_max,self.num_measurements_high,endpoint=True)
+                conc_mid = np.linspace(conc_all_temp[low_half],np.amin(conc_high),self.num_measurements_mid,endpoint=False)
+            else:
+                conc_all_temp = np.geomspace(self.conc_min,self.conc_max,self.num_measurements)
+                conc_low = np.geomspace(self.conc_min,conc_all_temp[low_half],self.num_measurements_low,endpoint=False)
+                conc_high = np.geomspace(conc_all_temp[-upper_half],self.conc_max,self.num_measurements_high,endpoint=True)
+                conc_mid = np.geomspace(conc_all_temp[low_half],np.amin(conc_high),self.num_measurements_mid,endpoint=False)
             self.conc_all = np.unique(np.concatenate((conc_low,conc_mid,conc_high),axis = 0))
         else:
             if self.num_measurements%2 == 0: # deals with odd number of measurements chosen
@@ -127,13 +133,22 @@ class params:
             else:
                 low_half_mid = self.num_measurements_mid//2 + 1
             # conc_all_temp = np.geomspace(self.conc_min,self.conc_max,self.num_measurements)
-            conc_low_temp = np.geomspace(self.conc_min,self.k_d,low_half,endpoint=False)
-            conc_high_temp = np.geomspace(self.k_d,self.conc_max,upper_half)
-            
-            conc_low = np.geomspace(self.conc_min,np.mean(conc_low_temp),self.num_measurements_low,endpoint=False)
-            conc_high = np.geomspace(np.mean(conc_high_temp),self.conc_max,self.num_measurements_high)
-            conc_mid_low = np.geomspace(np.mean(conc_low_temp),self.k_d,low_half_mid,endpoint=False)
-            conc_mid_high = np.geomspace(self.k_d,np.mean(conc_high_temp),self.num_measurements_mid//2,endpoint=False)
+            if self.linear:
+                conc_low_temp = np.linspace(self.conc_min,self.k_d,low_half,endpoint=False)
+                conc_high_temp = np.linspace(self.k_d,self.conc_max,upper_half)
+                
+                conc_low = np.linspace(self.conc_min,np.mean(conc_low_temp),self.num_measurements_low,endpoint=False)
+                conc_high = np.linspace(np.mean(conc_high_temp),self.conc_max,self.num_measurements_high)
+                conc_mid_low = np.linspace(np.mean(conc_low_temp),self.k_d,low_half_mid,endpoint=False)
+                conc_mid_high = np.linspace(self.k_d,np.mean(conc_high_temp),self.num_measurements_mid//2,endpoint=False)
+            else:
+                conc_low_temp = np.geomspace(self.conc_min,self.k_d,low_half,endpoint=False)
+                conc_high_temp = np.geomspace(self.k_d,self.conc_max,upper_half)
+                
+                conc_low = np.geomspace(self.conc_min,np.mean(conc_low_temp),self.num_measurements_low,endpoint=False)
+                conc_high = np.geomspace(np.mean(conc_high_temp),self.conc_max,self.num_measurements_high)
+                conc_mid_low = np.geomspace(np.mean(conc_low_temp),self.k_d,low_half_mid,endpoint=False)
+                conc_mid_high = np.geomspace(self.k_d,np.mean(conc_high_temp),self.num_measurements_mid//2,endpoint=False)
             self.conc_all = np.unique(np.concatenate((conc_low,conc_mid_low,conc_mid_high,conc_high),axis = 0))
             # self.conc_all = np.unique(np.concatenate((conc_low_temp,conc_high_temp),axis = 0))
 
@@ -146,7 +161,10 @@ class params:
         ax.set_ylabel('[M]')
         if self.hormone:
             axy = ax.twinx()
-            axy.semilogy(self.conc_all / (self.conv_IU),'o',color = 'm',fillstyle= 'none')
+            if self.linear:
+                axy.plot(self.conc_all / (self.conv_IU),'o',color = 'm',fillstyle= 'none')
+            else:
+                axy.semilogy(self.conc_all / (self.conv_IU),'o',color = 'm',fillstyle= 'none')
             axy.set_ylabel('[IU]')
         if self.k_d_known:
             ax.hlines(self.k_d,0,self.num_measurements,colors='r',linestyle = 'dashed')
@@ -157,7 +175,10 @@ class params:
         ax.annotate('R3 Points',(self.num_measurements_low + self.num_measurements_mid+1,np.amax(self.conc_all)*.99),xycoords = 'data')
         ax.vlines([self.num_measurements_low,self.num_measurements_low+
                    self.num_measurements_mid],0,np.amax(self.conc_all),colors='k',linestyle = 'dotted')
-        ax.semilogy(self.conc_all,'x')
+        if self.linear:
+            ax.plot(self.conc_all,'x')
+        else:
+            ax.semilogy(self.conc_all,'x')
 
     def create_array(self):
         self.df = pd.DataFrame()
@@ -372,9 +393,6 @@ def hormone_isChecked():
         drop_unitslow.set_menu(unit_options[0][3],*unit_options[0])
         drop_unitsconv.configure(state='disabled')
         ent_conv.configure(state='disabled')
-        get_concsettings()
-        new_params.plot_conc(ax)
-        canvas.draw()
     else:
         new_params.hormone = True
         drop_units.set_menu(unit_options[1][0],*unit_options[0])
@@ -382,25 +400,31 @@ def hormone_isChecked():
         drop_unitslow.set_menu(unit_options[1][1],*unit_options[0])
         drop_unitsconv.configure(state='normal')
         ent_conv.configure(state='normal')
-        get_concsettings()
-        new_params.plot_conc(ax)
-        canvas.draw()
+    get_concsettings()
+    new_params.plot_conc(ax)
+    canvas.draw()
+
+def linear_isChecked():
+    if linear.get():
+        new_params.linear = True
+    else:
+        new_params.linear = False
+    get_concsettings()
+    new_params.plot_conc(ax)
+    canvas.draw()
 
 def kd_isChecked():
     if kd_known.get() == 0:
         new_params.k_d_known = False
         drop_unitskd.configure(state='disabled')
         ent_kd.configure(state='disabled')
-        get_concsettings()
-        new_params.plot_conc(ax)
-        canvas.draw()
     else:
         new_params.k_d_known = True
         drop_unitskd.configure(state='normal')
         ent_kd.configure(state='normal')
-        get_concsettings()
-        new_params.plot_conc(ax)
-        canvas.draw()
+    get_concsettings()
+    new_params.plot_conc(ax)
+    canvas.draw()
         
         
 def get_concsettings():
@@ -413,6 +437,10 @@ def get_concsettings():
     new_params.start_vol = float(ent_start_vol.get())*10**-3
     new_params.smallest_vol_added = float(ent_small_vol.get())
     new_params.largest_vol_added = float(ent_large_vol.get())
+    new_params.num_measurements = int(ent_numpoints.get())
+    new_params.frac_low = int(ent_numpoints_1.get())
+    new_params.frac_mid = int(ent_numpoints_2.get())
+    new_params.frac_high = int(ent_numpoints_3.get())
     if new_params.hormone:
         dict_ind = 1
         new_params.conv_unit = unit_options[0].index(units_conv.get())
@@ -425,7 +453,7 @@ def get_concsettings():
     new_params.run_calc()
     
 def enter(event):
-    print('Enter felt')
+    # print('Enter felt')
     get_concsettings()
     new_params.plot_conc(ax)
     canvas.draw()
@@ -453,6 +481,8 @@ units_conv = StringVar()
 unitskd = StringVar()
 
 hormone = BooleanVar()
+linear = BooleanVar()
+linear.set(False)
 kd_known = BooleanVar()
 
 k_d = DoubleVar()
@@ -596,16 +626,19 @@ lbl_meas = ttk.Label(master = frame_root,text = 'R3: ').grid(row=4,column=0)
 ent_numpoints_3 = ttk.Spinbox(master = frame_root,from_=1,to = 100,width = width_textbox,command=dist_change_3)
 ent_numpoints_3.grid(row = 4,column = 1, sticky=W)
 ent_numpoints_3.bind('<Return>',dist_change_3_enter)
-
+check_log = ttk.Radiobutton(master = frame_root,text = 'Logarithmic', variable = linear,value = False,command = linear_isChecked)
+check_log.grid(row=5,column=0)
+check_linear = ttk.Radiobutton(master = frame_root,text = 'Linear', variable = linear,value = True,command = linear_isChecked)
+check_linear.grid(row=5,column=1)
 check_kd = ttk.Checkbutton(master = frame_root,text = 'Kd Known?', variable = kd_known, onvalue = 1, offvalue = 0,command = kd_isChecked)
-check_kd.grid(row=5,column=0)
+check_kd.grid(row=6,column=0)
 
 ent_kd = ttk.Entry(master=frame_root,width = width_textbox)
-ent_kd.grid(row = 5,column = 1)
+ent_kd.grid(row = 6,column = 1)
 ent_kd.bind('<Return>',enter)
 drop_unitskd = ttk.OptionMenu(frame_root, unitskd, unit_options[0][3],*unit_options[0],command=enter)
 drop_unitskd.configure(state='disabled')
-drop_unitskd.grid(row=5,column=2,sticky = E)
+drop_unitskd.grid(row=6,column=2,sticky = E)
 
 #%% Figure
 frame_canvas = ttk.Frame(root)
