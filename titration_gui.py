@@ -35,7 +35,7 @@ class params:
         self.end_vol = 0 # size of shot glass volume (L) allowed (throws an error if you go too high)
         ## This is the range of volumes you want to add. I guarantee the smallest volume added will always be the lower limit
         ## *TO PREVENT AN INFINITE LOOP*  although everything I've test so far works...I don't guarantee the largest volume added
-        self.smallest_vol_added = 2 # uL Smallest volume you think the pipette is accurate for
+        self.smallest_vol_added = 1 # uL Smallest volume you think the pipette is accurate for
         self.largest_vol_added = 1000 # uL Largest volume you'd like to add to the shot glass
         """ Titration Parameters """
         self.num_measurements = 50 # total number of measurements you want to take
@@ -180,6 +180,60 @@ class params:
         else:
             ax.semilogy(self.conc_all,'x')
 
+    def print_sheet(self):
+        figure, axes = plt.subplots(1,2,figsize = (8,5),gridspec_kw={'width_ratios': [1, 4]})
+        axes[0].axis('off')
+        axes[1].axis('off')
+        axes[0].annotate('Experiment:\n',xy=(0,1),xycoords='axes fraction',va='center')
+        axes[0].annotate('Aptamer:\n' ,xy=(0,0.9),xycoords='axes fraction',va='center')
+        axes[0].annotate('Target:\n' ,xy=(0,0.8),xycoords='axes fraction',va='center')
+        axes[0].annotate('Environment:\n' ,xy=(0,0.7),xycoords='axes fraction',va='center')
+
+        axes[0].annotate('Stock totals: ',xy=(0,0.6),xycoords='axes fraction',va='top')
+        decrease = 0.04
+        line = 1
+        unique_stocks = np.unique(self.df['Stock [M]'])
+        total_vol_perstock = np.zeros_like(unique_stocks)
+        for item in self.df.index.values.tolist():
+            idx = np.where(unique_stocks==self.df['Stock [M]'][item])
+            total_vol_perstock[idx] = total_vol_perstock[idx] + self.df['Added Volume (uL)'][item]
+        for idx, x in enumerate(unique_stocks):
+            axes[0].annotate(str(np.format_float_scientific(x,precision = 0)) + 
+                             ':\t'+ str(np.ceil(total_vol_perstock[idx])) + ' $\mu$L',xy=(0,0.6-line*decrease),xycoords='axes fraction',va='top')
+            line += 1
+        axes[0].annotate('Starting Volume:\n' + str(self.start_vol*1000) + ' mL',xy=(0,0.3),xycoords='axes fraction',va='top')
+        axes[0].annotate('Distribution:\n' + str(self.frac_low) + ':'+ str(self.frac_mid) + ':'+ str(self.frac_high),xy=(0,0.2),xycoords='axes fraction',va='top')
+        axes[0].annotate('Concentration Range:\n' + str(self.conc_min) + '-'+ str(self.conc_max),xy=(0,0.1),xycoords='axes fraction',va='top')
+        
+        axes[1].annotate('#',xy=(0,1),xycoords='axes fraction',weight = 'bold')
+        axes[1].annotate('Stock',xy=(0.05,1),xycoords='axes fraction',weight = 'bold')
+        axes[1].annotate('Add',xy=(0.21,1),xycoords='axes fraction',weight = 'bold')
+        if self.remove:
+            axes[1].annotate('Remove',xy=(0.3,1),xycoords='axes fraction',weight = 'bold')
+        decrease = 0.04
+        line = 1
+        xcoord = 0
+        colors = plt.cm.Pastel1(np.linspace(0,1,len(unique_stocks)))
+        for i in range(0,self.num_measurements+1):
+            color = colors[np.where(unique_stocks == self.df[self.df.columns[1]].iloc[i])[0]][0]
+            if i == 26:
+                xcoord += 0.5
+                line = 1
+                axes[1].annotate('#',xy=(xcoord,1),xycoords='axes fraction',weight = 'bold')
+                axes[1].annotate('Stock',xy=(xcoord+0.05,1),xycoords='axes fraction',weight = 'bold')
+                axes[1].annotate('Add',xy=(xcoord+0.21,1),xycoords='axes fraction',weight = 'bold')
+                if self.remove:
+                    axes[1].annotate('Remove',xy=(xcoord+0.3,1),xycoords='axes fraction',weight = 'bold')
+            axes[1].annotate(i+1,xy=(xcoord,1-line*decrease),xycoords='axes fraction',weight = 'bold')
+            axes[1].annotate(np.format_float_scientific(self.df['Stock [M]'].iloc[i],precision=0),xy=(xcoord + 0.05,1-line*decrease),xycoords='axes fraction')
+            axes[1].annotate(self.df['Added Volume (uL)'].iloc[i],xy=(xcoord + 0.21,1-line*decrease),xycoords='axes fraction')
+            if self.remove:
+                axes[1].annotate(self.df['Remove Volume (uL)'].iloc[i],xy=(xcoord + 0.3,1-line*decrease),xycoords='axes fraction')
+            rect = plt.Rectangle((xcoord,.99-line*decrease),0.5,decrease,facecolor = color)
+            axes[1].add_patch(rect)
+            line += 1
+        plt.tight_layout()
+        figure.savefig(self.datadir + '/' + self.startfilename + '-halfsheet.png')
     def create_array(self):
         self.df = pd.DataFrame()
         self.df['Desired Conc (M)'] = self.conc_all
@@ -245,13 +299,12 @@ class params:
             output_txtfile.write('Stock Concentrations (M), Total Vol (uL)\n')
             for idx, val in enumerate(unique_stocks):
                 output_txtfile.write(str(val) + ', ' + str(total_vol_perstock[idx]) + '\n')
-        
-        
         output_txtfile.close()
         df1 = pd.DataFrame(np.zeros((1,len(self.df.columns))),columns = self.df.columns)
         self.df = df1.append(self.df,ignore_index = True)
-        self.df.set_index(np.linspace(1,self.num_measurements + 1,self.num_measurements + 1))
-        
+        self.df.index = np.linspace(1,self.num_measurements + 1,self.num_measurements + 1)
+        self.df.index.name = self.startfilename
+        self.print_sheet()
     
 
     def write_txtfile(self):
