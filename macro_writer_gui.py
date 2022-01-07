@@ -192,6 +192,12 @@ def clicked():
     expdir = filedialog.askdirectory()
     directory.delete(0,'end')
     directory.insert(END,expdir)
+
+def close_program():
+    root.destroy()
+
+def reset():
+    set_defaults()
     
 def print_macro():
     global new_params
@@ -247,11 +253,7 @@ def print_macro():
     new_params.write_txtfile()
     messagebox.showinfo(title = 'File Saved', message = 'File Location: ' + new_params.datadir + '\nFile Name: ' + new_params.macroname)
     
-def close_program():
-    root.destroy()
 
-def reset():
-    set_defaults()
     
 def default_cleanNaOH():
     ent_macro.delete(0,END)
@@ -334,7 +336,7 @@ def default_check():
     ent_repeat.insert(0,0)
     ent_delay.delete(0,END)
     ent_delay.insert(0,0)
-    check_save.select()
+    check_save.deselect()
     
 def default_freqmap_20():
     default_freqmap(20)
@@ -379,6 +381,8 @@ def default_freqmap(val):
         ent_incr = ttk.Entry(swv_freq,width=width_textbox)
         ent_incr.grid(row = x, column = 2)
         ent_incr.insert(0,new_params.incr_list[x])
+        button_incr = ttk.Button(swv_freq,text = 'x',width = 2,command = lambda x=x: freq_delete(x))
+        button_incr.grid(row = x, column = 3)
 
 def default_titrationcurve():
     global swv_freq
@@ -459,6 +463,31 @@ def set_defaults():
         if int(label.grid_info()['row']) > default_params.num_freq-1:
             label.grid_forget()
     check_save.select()
+
+def make_freq_map(swv_freq,num_freq):
+    pass
+    # for x in range(0,num_freq):
+    #     lbl_freq = ttk.Label(swv_freq,text = str(x+1)).grid(row=x,column=0)
+    #     ent_freq = ttk.Entry(swv_freq,width=width_textbox)
+    #     ent_freq.grid(row = x, column = 1)
+    #     ent_freq.insert(0,new_params.freq_list[x])
+    #     if new_params.freq_list[x] <= 25:
+    #         new_params.incr_list[x] = 0.003
+    #     elif new_params.freq_list[x] <= 90:
+    #         new_params.incr_list[x] = 0.002
+    #     else:
+    #         new_params.incr_list[x] = 0.001
+    #     ent_incr = ttk.Entry(swv_freq,width=width_textbox)
+    #     ent_incr.grid(row = x, column = 2)
+    #     ent_incr.insert(0,new_params.incr_list[x])
+    #     button_incr = ttk.Button(swv_freq,text = 'x',width = 2,command = lambda x=x: freq_delete(x))
+    #     button_incr.grid(row = x, column = 3)
+
+def freq_delete(row):
+    global new_params, swv_freq
+    print(row)
+    new_params.sample_interval = ent_incre.get()
+    addsub_freq(swv_freq,new_params)
 
 def freq_change():
     global new_params, swv_freq
