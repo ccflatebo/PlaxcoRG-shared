@@ -16,7 +16,6 @@ from scipy.sparse.linalg import spsolve
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks, savgol_filter
 from scipy import fft
-import eab_functions as ef
 import os
 import re
 
@@ -70,7 +69,7 @@ def scan_dir(directory):
         for file in files:
             if not file.endswith('.bin'):
                 filenames.append(file)
-    filenames = ef.natural_sort(filenames)
+    filenames = natural_sort(filenames)
     return filenames
 
 def check_dir_exist(directory):
@@ -94,7 +93,7 @@ def read_file(file):
         #                               skiprows=line_breaks[0], 
         #                               nrows=line_breaks[1]-1 - line_breaks[0], 
         #                               header=None) 
-        data = pd.read_csv(file,delimiter = ',',skiprows=line_breaks[-2]) 
+        data = pd.read_csv(file,delimiter = ',',skiprows=line_breaks[-2]) #CHANGED THIS BAKC
         return data#, experiment_info, instrument_info
     elif len(line_breaks) == 3: 
         # print('3 breaks')
@@ -166,7 +165,7 @@ def fit_swvcurrent(potentials,data,guesses, maxiter = 10000):
                       p0=guesses,
                       maxfev = maxiter)
     fit = gauss(potentials,*c)
-    residuals = ef.r2_calc(data, fit)
+    residuals = r2_calc(data, fit)
     return c, fit, residuals
 
 def fit_swv_trace(potentials,smoothed_data,peakidx_avg, base_distance = 10, base_width = 5):
@@ -177,7 +176,7 @@ def fit_swv_trace(potentials,smoothed_data,peakidx_avg, base_distance = 10, base
                       int(peaks[0] + peak_deets['widths'][0]/2)]
     elif np.shape(peaks)[0] > 1:
         peak_idx = find_nearest(peaks, peakidx_avg)
-        peaks = np.asarray([peaks[ef.find_nearest(peaks, peakidx_avg)]])
+        peaks = np.asarray([peaks[find_nearest(peaks, peakidx_avg)]])
         peak_range = [int(peaks[0] - peak_deets['widths'][peak_idx]/2),
                       int(peaks[0] + peak_deets['widths'][peak_idx]/2)]
     else:
@@ -186,7 +185,7 @@ def fit_swv_trace(potentials,smoothed_data,peakidx_avg, base_distance = 10, base
                       peaks[0] + 15]
     peak_range.sort() # makes sure that the range is in ascending order
     if peak_range[-1] > np.shape(potentials)[0]: # correction to make sure peak_range isn't bigger than array size
-        peak_range[-1] = np.shape(potentials)[0]
+        peak_range[-1] = np.shape(potentials)[0] 
     if peak_range[0] < 0: # correction to make sure peak_range isn't negative
         peak_range[0] = 0
     guesses = [smoothed_data[peaks[0]], # a

@@ -26,7 +26,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 filedir = r'../Data/EChem/'
-date_exp = input('Experiment Date: ') #'210914'
+date_exp = input('Experiment Main Folder: ') #'210914'
+
+autoscan = False
 
 #%% Pick electrodes
 electrodes_ignore = input('Electrodes to ignore? (ie 3, 4, 6): ')
@@ -37,7 +39,7 @@ if electrodes_ignore:
 smoothing_bool = True
 #%%
 datadir = filedir + date_exp + '/'
-rawdir = ef.select_dir(datadir,'Raw Data Files')
+rawdir = ef.select_dir(datadir,'Folder Location of Raw Data Files')
 # rawdir = datadir + 'Raw/'
 convertdir = datadir + 'Converted/'
 analysisdir = datadir + datetime.datetime.today().strftime('%y%m%d') + '/'
@@ -51,13 +53,22 @@ ef.check_dir_exist(analysisdir)
 # Data Selection
 swv_list = os.path.dirname(datadir) + '/swvdata.txt'
 if not os.path.exists(swv_list): # If swvdata doesn't exist, autoselects for you
-    filenames = list(ef.scan_dir(rawdir)) # autoscans
-    if len(filenames) == 0:
-        print('No Files')
-    else: # autoreads from text file
+    if autoscan:
+        filenames = list(ef.scan_dir(rawdir)) # autoscans
+        if len(filenames) == 0:
+            print('No Files')
+        else: # autoreads from text file
+            for i in range(0,len(filenames)):
+                filenames[i] = filenames[i].rstrip('.txt')
+                # filenames[i] = filenames[i].split('/')[-1]
+            filetxt = open(swv_list,'w')
+            filetxt.write('\n'.join(map(str,filenames)))
+            filetxt.close()
+    else:
+        filenames = list(ef.getfiles(rawdir, 'Select SWV Files', ('Text Files','*.txt')))
         for i in range(0,len(filenames)):
-            filenames[i] = filenames[i].rstrip('.txt')
-            # filenames[i] = filenames[i].split('/')[-1]
+                filenames[i] = filenames[i].rstrip('.txt')
+                filenames[i] = filenames[i].split('/')[-1]
         filetxt = open(swv_list,'w')
         filetxt.write('\n'.join(map(str,filenames)))
         filetxt.close()
@@ -161,8 +172,8 @@ for i, filename in enumerate(filenames):
         base_distance = 10
         base_width = 5
         
-        swv_difference_bgcorr.iloc[:,0] = fft_swv(potentials,swv_difference.iloc[:,0], int(new_freq))
-        swv_difference_bgcorr.iloc[:,0] = ef.baseline_removal(swv_difference_bgcorr.iloc[:,0])
+        # swv_difference_bgcorr.iloc[:,0] = fft_swv(potentials,swv_difference.iloc[:,0], int(new_freq))
+        swv_difference_bgcorr.iloc[:,0] = ef.baseline_removal(swv_difference.iloc[:,0])
         
         # swv_difference_bgcorr.iloc[:,0] = swv_difference.iloc[:,0]
         yprime_temp, params_temp = ef.fit_swv_trace(potentials, swv_difference_bgcorr.iloc[:,0], peakidx_avg)
